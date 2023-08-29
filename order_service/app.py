@@ -73,7 +73,7 @@ def process_message(message):
         data = json.loads(message)
         method = data.get('method')
 
-        if method is not None:
+        if method in ['make_order', 'cancel_order']:
             producer.produce(KAFKA_TOPIC_PRODUCER, value=json.dumps(data).encode('utf-8'))
             print("Message sent to database:", data)
 
