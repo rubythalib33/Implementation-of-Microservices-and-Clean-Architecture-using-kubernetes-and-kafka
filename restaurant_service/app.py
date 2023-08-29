@@ -1,72 +1,37 @@
 from fastapi import FastAPI
 import os
-from confluent_kafka import Consumer, KafkaError, Producer
-from confluent_kafka.admin import AdminClient, NewTopic
 import json
 import threading
 import time
+import redis
 from httpx import AsyncClient
 
-MONGO_SERVER = os.getenv('MONGO_SERVER','localhost:27017')
-KAFKA_SERVER = os.getenv('KAFKA_SERVER', 'localhost:9092')
-KAFKA_TOPIC_CONSUMER = 'business_logic'  # Update with your topic name
-KAFKA_TOPIC_PRODUCER = 'database'  # Update with your topic name
-DATABASE_SERVICE_URL = os.getenv('DATABASE_SERVICE_URL','http://database-service-ip:database-service-port')
+MONGO_SERVER = os.getenv('MONGO_SERVER', 'localhost:27017')
+REDIS_SERVER = os.getenv('REDIS_SERVER', 'localhost:6379')
+REDIS_CHANNEL_CONSUMER = 'business_logic'
+REDIS_CHANNEL_PRODUCER = 'database'
+DATABASE_SERVICE_URL = os.getenv('DATABASE_SERVICE_URL', 'http://database-service-ip:database-service-port')
 
-# Initialize Kafka producer
-try:
-    admin_client = AdminClient({'bootstrap.servers': KAFKA_SERVER})
-
-    # Define the topic configuration
-    topic_config = {
-        'topic_name': KAFKA_TOPIC_PRODUCER,  # Update with your topic name
-        'num_partitions': 1,
-        'replication_factor': 1
-    }
-
-    # Create the NewTopic instance
-    new_topic = NewTopic(
-        topic_config['topic_name'],
-        num_partitions=topic_config['num_partitions'],
-        replication_factor=topic_config['replication_factor']
-    )
-
-    # Create the topic
-    admin_client.create_topics([new_topic])
-except Exception as e:
-    print(f"Topic creation failed: {e}")
-
-producer = Producer({'bootstrap.servers': KAFKA_SERVER})
+# Initialize Redis client
+redis_client = redis.StrictRedis(host=REDIS_SERVER, port=6379, db=0)
+pubsub = redis_client.pubsub()
+pubsub.subscribe(REDIS_CHANNEL_CONSUMER)
 
 app = FastAPI()
-# Initialize Kafka consumer
-conf = {'bootstrap.servers': KAFKA_SERVER, 'group.id': 'my-group', 'auto.offset.reset': 'earliest'}
-consumer = Consumer(conf)
-consumer.subscribe([KAFKA_TOPIC_CONSUMER])
 
 def consume_messages():
-    print("consume_messages function started")  # Add this line
+    print("consume_messages function started")
     while True:
         print("Waiting for message")
-        msg = consumer.poll(1.0)
+        message = pubsub.get_message()
 
-        if msg is None:
-            continue
-        if msg.error():
-            if msg.error().code() == KafkaError._PARTITION_EOF:
-                continue
-            else:
-                print(msg.error())
-                break
+        if message and message['type'] == 'message':
+            message_value = message['data'].decode('utf-8')
+            print(f"Received message: {message_value}")
 
-        message_value = msg.value().decode('utf-8')
-        print(f"Received message: {message_value}")
-        
-        # Process the message and update the database accordingly
-        process_message(message_value)
+            # Process the message and update the database accordingly
+            process_message(message_value)
         time.sleep(0.2)
-
-    consumer.close()
 
 def process_message(message):
     try:
@@ -74,7 +39,7 @@ def process_message(message):
         method = data.get('method')
 
         if method in ['add_product', 'remove_product', 'update_product', 'food_is_done_cooked']:
-            producer.produce(KAFKA_TOPIC_PRODUCER, value=json.dumps(data).encode('utf-8'))
+            redis_client.publish(REDIS_CHANNEL_PRODUCER, json.dumps(data))
             print("Message sent to database:", data)
 
     except Exception as e:
@@ -86,9 +51,8 @@ async def get_all_product():
         response = await client.get(f"{DATABASE_SERVICE_URL}/get_all_product")
     return response.json()
 
-
 if __name__ == "__main__":
-    # Start the Kafka consumer thread
+    # Start the Redis consumer thread
     t1 = threading.Thread(target=consume_messages)
     t1.start()
 

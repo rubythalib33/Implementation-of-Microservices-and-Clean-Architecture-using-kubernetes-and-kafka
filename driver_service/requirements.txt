@@ -1,2 +1,2 @@
-confluent_kafka
+redis
 httpx

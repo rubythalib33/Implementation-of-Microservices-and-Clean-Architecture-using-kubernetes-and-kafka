@@ -7,11 +7,11 @@ services:
     ports:
       - "8000:8000"
     environment:
-      KAFKA_SERVER: kafka:9092
+      REDIS_SERVER: redis
       RESTAURANT_SERVICE_URL: "http://restaurant-service:8001"
       ORDER_SERVICE_URL: "http://order-service:8001"
     depends_on:
-      - kafka
+      - redis
       - database-service
       - order-service
 
@@ -21,10 +21,10 @@ services:
     ports:
       - "8001:8001"
     environment:
-      KAFKA_SERVER: kafka:9092
+      REDIS_SERVER: redis
       DATABASE_SERVICE_URL: "http://database-service:7000"
     depends_on:
-      - kafka
+      - redis
       - database-service
   
   restaurant-service:
@@ -33,27 +33,27 @@ services:
     ports:
       - "8002:8001"
     environment:
-      KAFKA_SERVER: kafka:9092
+      REDIS_SERVER: redis
       DATABASE_SERVICE_URL: "http://database-service:7000"
     depends_on:
-      - kafka
+      - redis
       - database-service
 
   payment-service:
     image: rubythalib/payment-service:latest
     container_name: payment-service
     environment:
-      KAFKA_SERVER: kafka:9092
+      REDIS_SERVER: redis
     depends_on:
-      - kafka
+      - redis
 
   driver-service:
     image: rubythalib/driver-service:latest
     container_name: driver-service
     environment:
-      KAFKA_SERVER: kafka:9092
+      REDIS_SERVER: redis
     depends_on:
-      - kafka
+      - redis
 
   database-service:
     image: rubythalib/database-service:latest
@@ -61,10 +61,10 @@ services:
     ports:
       - "7000:7000"
     environment:
-      KAFKA_SERVER: kafka:9092
+      REDIS_SERVER: redis
       MONGO_SERVER: mongo:27017
     depends_on:
-      - kafka
+      - redis
       - mongo
       - payment-service
   
@@ -74,28 +74,8 @@ services:
     ports:
       - "27017:27017"
 
-  zookeeper:
-    image: confluentinc/cp-zookeeper:6.2.0
-    container_name: zookeeper
+  redis:
+    image: redis:latest
+    container_name: redis
     ports:
-      - "2181:2181"
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-
-  kafka:
-    image: confluentinc/cp-kafka:6.2.0
-    container_name: kafka
-    ports:
-      - "9092:9092"
-    environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:29092,EXTERNAL://localhost:9092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
-      KAFKA_LISTENERS: INTERNAL://0.0.0.0:29092,EXTERNAL://0.0.0.0:9092
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"  # Set to "true" if you want auto topic creation
-    depends_on:
-      - zookeeper
-
+      - "6380:6379"

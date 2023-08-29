@@ -1,4 +1,4 @@
 uvicorn[standard]
 fastapi
 pymongo
-confluent_kafka
+redis

@@ -1,48 +1,37 @@
 from fastapi import FastAPI
 from pymongo import MongoClient
 import os
-from confluent_kafka import Consumer, KafkaError
 import json
 import threading
 import time
+import redis
 
-MONGO_SERVER = os.getenv('MONGO_SERVER','localhost:27017')
-KAFKA_SERVER = os.getenv('KAFKA_SERVER', 'localhost:9092')
-KAFKA_TOPIC = 'database'  # Update with your topic name
-
+MONGO_SERVER = os.getenv('MONGO_SERVER', 'localhost:27017')
+REDIS_SERVER = os.getenv('REDIS_SERVER', 'localhost:6379')
+REDIS_CHANNEL = 'database'
 
 app = FastAPI()
 db = MongoClient(f'mongodb://{MONGO_SERVER}/')
 db = db['restaurant']
 
-# Initialize Kafka consumer
-conf = {'bootstrap.servers': KAFKA_SERVER, 'group.id': 'my-group', 'auto.offset.reset': 'earliest'}
-consumer = Consumer(conf)
-consumer.subscribe([KAFKA_TOPIC])
+# Initialize Redis client and subscribe to a channel
+redis_client = redis.StrictRedis(host=REDIS_SERVER, port=6379, db=0)
+pubsub = redis_client.pubsub()
+pubsub.subscribe(REDIS_CHANNEL)
 
 def consume_messages():
-    print("consume_messages function started")  # Add this line
+    print("consume_messages function started")
     while True:
         print("Waiting for message")
-        msg = consumer.poll(1.0)
+        message = pubsub.get_message()
 
-        if msg is None:
-            continue
-        if msg.error():
-            if msg.error().code() == KafkaError._PARTITION_EOF:
-                continue
-            else:
-                print(msg.error())
-                break
+        if message and message['type'] == 'message':
+            message_value = message['data'].decode('utf-8')
+            print(f"Received message: {message_value}")
 
-        message_value = msg.value().decode('utf-8')
-        print(f"Received message: {message_value}")
-        
-        # Process the message and update the database accordingly
-        process_message(message_value)
+            # Process the message and update the database accordingly
+            process_message(message_value)
         time.sleep(0.2)
-
-    consumer.close()
 
 def process_message(message):
     try:
@@ -103,7 +92,7 @@ def process_message(message):
             order_id = data.get('order_id')
             if order_id:
                 db.orders.update_one({'order_id': order_id}, {'$set': {'is_delivered': True}})
-                
+
         # Add more cases for other methods as needed
 
         else:
