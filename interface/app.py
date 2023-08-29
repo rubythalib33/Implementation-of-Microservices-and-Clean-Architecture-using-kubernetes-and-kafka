@@ -1,17 +1,19 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
-from kafka import KafkaProducer
+from confluent_kafka import Producer
 from httpx import AsyncClient
 from uuid import uuid4
 import json
+import os
 
 app = FastAPI()
 
 # Initialize Kafka producer
-producer = KafkaProducer(bootstrap_servers='localhost:9092', value_serializer=lambda x: json.dumps(x).encode('utf-8'))
-
-RESTAURANT_SERVICE_URL = "http://product-service-ip:product-service-port"
-ORDER_SERVICE_URL = "http://order-service-ip:order-service-port"
+KAFKA_SERVER = os.getenv('KAFKA_SERVER','localhost:9092')
+print(KAFKA_SERVER)
+producer = Producer({'bootstrap.servers': KAFKA_SERVER})
+RESTAURANT_SERVICE_URL = os.getenv('RESTAURANT_SERVICE_URL','http://restaurant-service-ip:restaurant-service-port')
+ORDER_SERVICE_URL = os.getenv('ORDER_SERVICE_URL','http://order-service-ip:order-service-port')
 
 # Pydantic model for order data
 class Order(BaseModel):
@@ -41,7 +43,8 @@ def make_order(order: Order):
     order = order.dict()
     order['method'] = 'make_order'
     # Publish message to Kafka for further processing
-    producer.send('business_logic', value=order)
+    producer.produce('business_logic', value=json.dumps(order).encode('utf-8'))
+    producer.flush()  # Wait for the message to be sent
     return {"message": "Order placed successfully"}
 
 # API endpoint to cancel an order
@@ -54,7 +57,8 @@ def cancel_order(order_id: str):
         'order_id': order_id
     }
     # Publish message to Kafka for further processing
-    producer.send('business_logic', value=order)
+    producer.produce('business_logic', value=json.dumps(order).encode('utf-8'))
+    producer.flush()  # Wait for the message to be sent
     return {"message": f"Order {order_id} canceled"}
 
 # API endpoint to make a payment
@@ -67,7 +71,8 @@ def make_payment(order_id: str):
         'order_id': order_id
     }
     # Publish message to Kafka for further processing
-    producer.send('business_logic', value=order)
+    producer.produce('business_logic', value=json.dumps(order).encode('utf-8'))
+    producer.flush()
     return {"message": f"Payment for order {order_id} processed"}
 
 # API endpoint to add a product
@@ -78,7 +83,8 @@ def add_product(product: Product):
     product = product.dict()
     product['method'] = 'add_product'
     # Publish message to Kafka for further processing
-    producer.send('business_logic', value=product)
+    producer.produce('business_logic', value=json.dumps(product).encode('utf-8'))
+    producer.flush()
     return {"message": f"Product {product['name']} added"}
 
 # API endpoint to remove a product
@@ -91,7 +97,8 @@ def remove_product(product_name: str):
         'product_name': product_name
     }
     # Publish message to Kafka for further processing
-    producer.send('business_logic', value=product)
+    producer.produce('business_logic', value=json.dumps(product).encode('utf-8'))
+    producer.flush()
     return {"message": f"Product {product_name} removed"}
 
 # API endpoint to update a product
@@ -103,7 +110,8 @@ def update_product(product: Product):
     product['method'] = 'update_product'
 
     # Publish message to Kafka for further processing
-    producer.send('business_logic', value=product)
+    producer.produce('business_logic', value=json.dumps(product).encode('utf-8'))
+    producer.flush()
     return {"message": f"Product {product.name} updated"}
 
 # API endpoint for notifying food is done cooked
@@ -116,7 +124,8 @@ def food_is_done_cooked(order_id: str):
         'order_id': order_id
     }
     # Publish message to Kafka for further processing
-    producer.send('business_logic', value=order)
+    producer.produce('business_logic', value=json.dumps(order).encode('utf-8'))
+    producer.flush()
     return {"message": f"Food for order {order_id} is cooked"}
 
 # API endpoint to get all orders by making a request to OrderService
@@ -137,7 +146,8 @@ def order_is_done_delivered(order_id: str):
         'order_id': order_id
     }
     # Publish message to Kafka for further processing
-    producer.send('business_logic', value=order)
+    producer.produce('business_logic', value=json.dumps(order).encode('utf-8'))
+    producer.flush()
     return {"message": f"Order {order_id} is delivered"}
 
 # ... similar implementations for other actions

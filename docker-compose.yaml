@@ -1,0 +1,37 @@
+version: '3'
+
+services:
+  interface-service:
+    image: rubythalib/interface-service:latest
+    container_name: interface-service
+    ports:
+      - "8000:8000"
+    environment:
+      KAFKA_SERVER: kafka:9092
+      RESTAURANT_SERVICE_URL: "http://product-service-ip:product-service-port"
+      ORDER_SERVICE_URL: "http://order-service-ip:order-service-port"
+    depends_on:
+      - kafka
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:6.2.0
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+
+  kafka:
+    image: confluentinc/cp-kafka:6.2.0
+    container_name: kafka
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"  # Set to "true" if you want auto topic creation
+    depends_on:
+      - zookeeper
+
