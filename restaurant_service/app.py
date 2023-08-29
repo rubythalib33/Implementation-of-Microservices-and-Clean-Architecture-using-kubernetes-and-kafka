@@ -73,17 +73,17 @@ def process_message(message):
         data = json.loads(message)
         method = data.get('method')
 
-        if method in ['make_order', 'cancel_order']:
+        if method in ['add_product', 'remove_product', 'update_product']:
             producer.produce(KAFKA_TOPIC_PRODUCER, value=json.dumps(data).encode('utf-8'))
             print("Message sent to database:", data)
 
     except Exception as e:
         print("Error processing message:", e)
 
-@app.get("/get_all_order")
-async def get_all_order():
+@app.get("/get_all_product")
+async def get_all_product():
     async with AsyncClient() as client:
-        response = await client.get(f"{DATABASE_SERVICE_URL}/get_all_order")
+        response = await client.get(f"{DATABASE_SERVICE_URL}/get_all_product")
     return response.json()
 
 
