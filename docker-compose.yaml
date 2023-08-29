@@ -8,11 +8,52 @@ services:
       - "8000:8000"
     environment:
       KAFKA_SERVER: kafka:9092
-      RESTAURANT_SERVICE_URL: "http://database-service:7000"
-      ORDER_SERVICE_URL: "http://database-service:7000"
+      RESTAURANT_SERVICE_URL: "http://restaurant-service:8001"
+      ORDER_SERVICE_URL: "http://order-service:8001"
     depends_on:
       - kafka
       - database-service
+      - order-service
+
+  order-service:
+    image: rubythalib/order-service:latest
+    container_name: order-service
+    ports:
+      - "8001:8001"
+    environment:
+      KAFKA_SERVER: kafka:9092
+      DATABASE_SERVICE_URL: "http://database-service:7000"
+    depends_on:
+      - kafka
+      - database-service
+  
+  restaurant-service:
+    image: rubythalib/restaurant-service:latest
+    container_name: restaurant-service
+    ports:
+      - "8002:8001"
+    environment:
+      KAFKA_SERVER: kafka:9092
+      DATABASE_SERVICE_URL: "http://database-service:7000"
+    depends_on:
+      - kafka
+      - database-service
+
+  payment-service:
+    image: rubythalib/payment-service:latest
+    container_name: payment-service
+    environment:
+      KAFKA_SERVER: kafka:9092
+    depends_on:
+      - kafka
+
+  driver-service:
+    image: rubythalib/driver-service:latest
+    container_name: driver-service
+    environment:
+      KAFKA_SERVER: kafka:9092
+    depends_on:
+      - kafka
 
   database-service:
     image: rubythalib/database-service:latest
@@ -25,6 +66,7 @@ services:
     depends_on:
       - kafka
       - mongo
+      - payment-service
   
   mongo:
     image: mongo:latest
