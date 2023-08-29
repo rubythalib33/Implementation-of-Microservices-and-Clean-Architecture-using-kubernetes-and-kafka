@@ -1,0 +1,215 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: interface-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: interface-service
+  template:
+    metadata:
+      labels:
+        app: interface-service
+    spec:
+      containers:
+      - name: interface-service
+        image: rubythalib/interface-service:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: REDIS_SERVER
+          value: redis
+        - name: RESTAURANT_SERVICE_URL
+          value: "http://restaurant-service:8001"
+        - name: ORDER_SERVICE_URL
+          value: "http://order-service:8001"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: interface-service
+spec:
+  type: NodePort
+  selector:
+    app: interface-service
+  ports:
+  - port: 8000
+    targetPort: 8000
+    nodePort: 30800
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: order-service
+  template:
+    metadata:
+      labels:
+        app: order-service
+    spec:
+      containers:
+      - name: order-service
+        image: rubythalib/order-service:latest
+        ports:
+        - containerPort: 8001
+        env:
+        - name: REDIS_SERVER
+          value: redis
+        - name: DATABASE_SERVICE_URL
+          value: "http://database-service:7000"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-service
+spec:
+  selector:
+    app: order-service
+  ports:
+  - port: 8001
+    targetPort: 8001
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: restaurant-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: restaurant-service
+  template:
+    metadata:
+      labels:
+        app: restaurant-service
+    spec:
+      containers:
+      - name: restaurant-service
+        image: rubythalib/restaurant-service:latest
+        ports:
+        - containerPort: 8001
+        env:
+        - name: REDIS_SERVER
+          value: redis
+        - name: DATABASE_SERVICE_URL
+          value: "http://database-service:7000"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: restaurant-service
+spec:
+  selector:
+    app: restaurant-service
+  ports:
+  - port: 8001
+    targetPort: 8001
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payment-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: payment-service
+  template:
+    metadata:
+      labels:
+        app: payment-service
+    spec:
+      containers:
+      - name: payment-service
+        image: rubythalib/payment-service:latest
+        env:
+        - name: REDIS_SERVER
+          value: redis
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: payment-service
+spec:
+  selector:
+    app: payment-service
+  ports:
+  - port: 80
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: driver-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: driver-service
+  template:
+    metadata:
+      labels:
+        app: driver-service
+    spec:
+      containers:
+      - name: driver-service
+        image: rubythalib/driver-service:latest
+        env:
+        - name: REDIS_SERVER
+          value: redis
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: driver-service
+spec:
+  selector:
+    app: driver-service
+  ports:
+  - port: 80
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: database-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: database-service
+  template:
+    metadata:
+      labels:
+        app: database-service
+    spec:
+      containers:
+      - name: database-service
+        image: rubythalib/database-service:latest
+        ports:
+        - containerPort: 7000
+        env:
+        - name: REDIS_SERVER
+          value: redis
+        - name: MONGO_SERVER
+          value: mongo:27017
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: database-service
+spec:
+  selector:
+    app: database-service
+  ports:
+  - port: 7000
+    targetPort: 7000
