@@ -8,7 +8,7 @@ import time
 
 MONGO_SERVER = os.getenv('MONGO_SERVER','localhost:27017')
 KAFKA_SERVER = os.getenv('KAFKA_SERVER', 'localhost:9092')
-KAFKA_TOPIC = 'business_logic'  # Update with your topic name
+KAFKA_TOPIC = 'database'  # Update with your topic name
 
 
 app = FastAPI()
