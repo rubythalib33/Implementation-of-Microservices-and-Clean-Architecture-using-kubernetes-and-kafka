@@ -93,7 +93,17 @@ def process_message(message):
             if product_data:
                 db.products.update_one({'name': product_data['name']}, {'$set': product_data})
                 print("Product updated:", product_data['name'])
+        
+        elif method == 'food_is_done_cooked':
+            order_id = data.get('order_id')
+            if order_id:
+                db.orders.update_one({'order_id': order_id}, {'$set': {'is_cooked': True}})
 
+        elif method == 'order_is_done_delivered':
+            order_id = data.get('order_id')
+            if order_id:
+                db.orders.update_one({'order_id': order_id}, {'$set': {'is_delivered': True}})
+                
         # Add more cases for other methods as needed
 
         else:

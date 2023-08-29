@@ -1,11 +1,9 @@
-from fastapi import FastAPI
 import os
 from confluent_kafka import Consumer, KafkaError, Producer
 from confluent_kafka.admin import AdminClient, NewTopic
 import json
 import threading
 import time
-from httpx import AsyncClient
 
 MONGO_SERVER = os.getenv('MONGO_SERVER','localhost:27017')
 KAFKA_SERVER = os.getenv('KAFKA_SERVER', 'localhost:9092')
@@ -38,8 +36,6 @@ except Exception as e:
 
 producer = Producer({'bootstrap.servers': KAFKA_SERVER})
 
-app = FastAPI()
-# Initialize Kafka consumer
 conf = {'bootstrap.servers': KAFKA_SERVER, 'group.id': 'my-group', 'auto.offset.reset': 'earliest'}
 consumer = Consumer(conf)
 consumer.subscribe([KAFKA_TOPIC_CONSUMER])
@@ -73,24 +69,14 @@ def process_message(message):
         data = json.loads(message)
         method = data.get('method')
 
-        if method in ['add_product', 'remove_product', 'update_product', 'food_is_done_cooked']:
+        if method in ['make_payment']:
             producer.produce(KAFKA_TOPIC_PRODUCER, value=json.dumps(data).encode('utf-8'))
             print("Message sent to database:", data)
 
     except Exception as e:
         print("Error processing message:", e)
 
-@app.get("/get_all_product")
-async def get_all_product():
-    async with AsyncClient() as client:
-        response = await client.get(f"{DATABASE_SERVICE_URL}/get_all_product")
-    return response.json()
-
 
 if __name__ == "__main__":
     # Start the Kafka consumer thread
-    t1 = threading.Thread(target=consume_messages)
-    t1.start()
-
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8001)
+    consume_messages()
