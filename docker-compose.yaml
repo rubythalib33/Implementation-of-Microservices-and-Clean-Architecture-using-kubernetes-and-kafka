@@ -8,10 +8,29 @@ services:
       - "8000:8000"
     environment:
       KAFKA_SERVER: kafka:9092
-      RESTAURANT_SERVICE_URL: "http://product-service-ip:product-service-port"
-      ORDER_SERVICE_URL: "http://order-service-ip:order-service-port"
+      RESTAURANT_SERVICE_URL: "http://database-service:7000"
+      ORDER_SERVICE_URL: "http://database-service:7000"
     depends_on:
       - kafka
+      - database-service
+
+  database-service:
+    image: rubythalib/database-service:latest
+    container_name: database-service
+    ports:
+      - "7000:7000"
+    environment:
+      KAFKA_SERVER: kafka:9092
+      MONGO_SERVER: mongo:27017
+    depends_on:
+      - kafka
+      - mongo
+  
+  mongo:
+    image: mongo:latest
+    container_name: mongo
+    ports:
+      - "27017:27017"
 
   zookeeper:
     image: confluentinc/cp-zookeeper:6.2.0

@@ -1,0 +1,5 @@
+uvicorn[standard]
+fastapi
+pymongo
+confluent_kafka
+pymongo

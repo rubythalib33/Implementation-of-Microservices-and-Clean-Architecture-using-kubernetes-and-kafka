@@ -5,12 +5,34 @@ from httpx import AsyncClient
 from uuid import uuid4
 import json
 import os
+from confluent_kafka.admin import AdminClient, NewTopic
+
+KAFKA_SERVER = os.getenv('KAFKA_SERVER', 'localhost:9092')
+KAFKA_TOPIC = 'business_logic'  # Update with your topic name
+try:
+    admin_client = AdminClient({'bootstrap.servers': KAFKA_SERVER})
+
+    # Define the topic configuration
+    topic_config = {
+        'topic_name': KAFKA_TOPIC,  # Update with your topic name
+        'num_partitions': 1,
+        'replication_factor': 1
+    }
+
+    # Create the NewTopic instance
+    new_topic = NewTopic(
+        topic_config['topic_name'],
+        num_partitions=topic_config['num_partitions'],
+        replication_factor=topic_config['replication_factor']
+    )
+
+    # Create the topic
+    admin_client.create_topics([new_topic])
+except Exception as e:
+    print(f"Topic creation failed: {e}")
 
 app = FastAPI()
 
-# Initialize Kafka producer
-KAFKA_SERVER = os.getenv('KAFKA_SERVER','localhost:9092')
-print(KAFKA_SERVER)
 producer = Producer({'bootstrap.servers': KAFKA_SERVER})
 RESTAURANT_SERVICE_URL = os.getenv('RESTAURANT_SERVICE_URL','http://restaurant-service-ip:restaurant-service-port')
 ORDER_SERVICE_URL = os.getenv('ORDER_SERVICE_URL','http://order-service-ip:order-service-port')
@@ -18,14 +40,14 @@ ORDER_SERVICE_URL = os.getenv('ORDER_SERVICE_URL','http://order-service-ip:order
 # Pydantic model for order data
 class Order(BaseModel):
     order_id: str = str(uuid4())
-    product_ids: list
+    product_names: list
     is_paid: bool = False
     is_cooked: bool = False
     is_delivered: bool = False
 
 # Pydantic model for product data
 class Product(BaseModel):
-    name: str = str(uuid4())
+    name: str 
     price: float
 
 # API endpoint to get all products
@@ -43,7 +65,7 @@ def make_order(order: Order):
     order = order.dict()
     order['method'] = 'make_order'
     # Publish message to Kafka for further processing
-    producer.produce('business_logic', value=json.dumps(order).encode('utf-8'))
+    producer.produce(KAFKA_TOPIC, value=json.dumps(order).encode('utf-8'))
     producer.flush()  # Wait for the message to be sent
     return {"message": "Order placed successfully"}
 
@@ -57,7 +79,7 @@ def cancel_order(order_id: str):
         'order_id': order_id
     }
     # Publish message to Kafka for further processing
-    producer.produce('business_logic', value=json.dumps(order).encode('utf-8'))
+    producer.produce(KAFKA_TOPIC, value=json.dumps(order).encode('utf-8'))
     producer.flush()  # Wait for the message to be sent
     return {"message": f"Order {order_id} canceled"}
 
@@ -71,7 +93,7 @@ def make_payment(order_id: str):
         'order_id': order_id
     }
     # Publish message to Kafka for further processing
-    producer.produce('business_logic', value=json.dumps(order).encode('utf-8'))
+    producer.produce(KAFKA_TOPIC, value=json.dumps(order).encode('utf-8'))
     producer.flush()
     return {"message": f"Payment for order {order_id} processed"}
 
@@ -83,7 +105,7 @@ def add_product(product: Product):
     product = product.dict()
     product['method'] = 'add_product'
     # Publish message to Kafka for further processing
-    producer.produce('business_logic', value=json.dumps(product).encode('utf-8'))
+    producer.produce(KAFKA_TOPIC, value=json.dumps(product).encode('utf-8'))
     producer.flush()
     return {"message": f"Product {product['name']} added"}
 
@@ -97,7 +119,7 @@ def remove_product(product_name: str):
         'product_name': product_name
     }
     # Publish message to Kafka for further processing
-    producer.produce('business_logic', value=json.dumps(product).encode('utf-8'))
+    producer.produce(KAFKA_TOPIC, value=json.dumps(product).encode('utf-8'))
     producer.flush()
     return {"message": f"Product {product_name} removed"}
 
@@ -110,7 +132,7 @@ def update_product(product: Product):
     product['method'] = 'update_product'
 
     # Publish message to Kafka for further processing
-    producer.produce('business_logic', value=json.dumps(product).encode('utf-8'))
+    producer.produce(KAFKA_TOPIC, value=json.dumps(product).encode('utf-8'))
     producer.flush()
     return {"message": f"Product {product.name} updated"}
 
@@ -124,7 +146,7 @@ def food_is_done_cooked(order_id: str):
         'order_id': order_id
     }
     # Publish message to Kafka for further processing
-    producer.produce('business_logic', value=json.dumps(order).encode('utf-8'))
+    producer.produce(KAFKA_TOPIC, value=json.dumps(order).encode('utf-8'))
     producer.flush()
     return {"message": f"Food for order {order_id} is cooked"}
 
@@ -146,7 +168,7 @@ def order_is_done_delivered(order_id: str):
         'order_id': order_id
     }
     # Publish message to Kafka for further processing
-    producer.produce('business_logic', value=json.dumps(order).encode('utf-8'))
+    producer.produce(KAFKA_TOPIC, value=json.dumps(order).encode('utf-8'))
     producer.flush()
     return {"message": f"Order {order_id} is delivered"}
 
